@@ -1,8 +1,10 @@
 #include <Arduino.h>
 #include <Wire.h>
 
-#define MPU_ADDR 0x68
-#define REF_COUNT 100 //100 pomiarow sredniej
+#define MPU_ADDR 0x68 // When nothing is connected to the addres pin of sensor this is its i2c address
+#define REF_COUNT 100 // 100 pomiarow sredniej
+
+//main structore for storing values read from sensor
 struct gyro_stru{
   float acc_X,acc_Y,acc_Z;
   float gyro_X,gyro_Y,gyro_Z; ///this values can can descend below 0!
@@ -14,11 +16,11 @@ struct gyro_stru{
 gyro_stru reference_holder{0,0,0,0,0};  //used when we want to set reference point away from ground level
 gyro_stru adjust_holder{0,0,0,0,0}; //groudn level calibaration offset
 
-char buff[6];
-unsigned long timer=0;
+char buff[6]; //Used for storing orders got from labview master through serial port
+unsigned long timer=0;  //used for time synchro in main loop eg to get values every 1 second
 
+//-----------------------------------------------------------------FUNCTION DECLARATIONS----------------------------------------//
 void gyro_init_fcn(void);
-char *conv_val_to_str(char *tab,int16_t i);
 void gyro_readout_fcn(gyro_stru *gs);
 void gyro_serialtestprint(gyro_stru *gs,gyro_stru *ref_s,gyro_stru *adj_s);
 void set_angle_reference(gyro_stru *gs,gyro_stru *ref);
@@ -28,30 +30,25 @@ bool recieve_order(gyro_stru *gs,gyro_stru *ref_s,gyro_stru *adj_s);
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
-
-
- 
- gyro_init_fcn();
- // gyro_set_reference(&gyro_holder,&start_offset);
+  gyro_init_fcn();
+  // gyro_set_reference(&gyro_holder,&start_offset);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-    unsigned long ac_time=millis();
-  recieve_order(&gyro_holder,&reference_holder,&adjust_holder);
+  unsigned long ac_time=millis();
+  recieve_order(&gyro_holder,&reference_holder,&adjust_holder);   //process the data got form com port immediatelly
   
- 
-  //tu powinna byc funkcja setreferencepoint
-
+  //testowo co 1 sekunde
   if(ac_time-timer>1000)
-  {
+  {   //send and refresh the sensor values every 1 second for now
     gyro_readout_fcn(&gyro_holder);
     gyro_serialtestprint(&gyro_holder,&reference_holder,&adjust_holder);
     timer=millis();
   }
- 
 }
 
+//todo : introduce the option to set sensor parameters such sensitivity or sleep 
 void gyro_init_fcn(void)
 {
   Wire.begin();
@@ -70,12 +67,7 @@ void gyro_init_fcn(void)
   Wire.endTransmission();
 }
 
-char *conv_val_to_str(char *tab,int16_t i)
-{
-  sprintf(tab,"%5d",i);
-  return tab;
-}
-
+//gyro accelerometer and temperature readout refresh
 void gyro_readout_fcn(gyro_stru *gs)
 {
   //fucnction to read all interesting values from gyro to struct 
@@ -120,46 +112,31 @@ void set_angle_reference(gyro_stru *gs,gyro_stru *ref)
   ref->angleAccX=tempangX/(float)REF_COUNT;
   ref->angleAccY=tempangY/(float)REF_COUNT;
 }
-
+//serial readout printout for development and debugging
 void gyro_serialtestprint(gyro_stru *gs,gyro_stru *ref_s,gyro_stru *adj_s)
 {
+  float Xfromref,Yfromref;
+  float Xfromadj,Yfromadj;
 
-  //calculate angle values:
-
-  //serial readout printout for development and debugging
-float Xfromref,Yfromref;
-float Xfromadj,Yfromadj;
-
-Xfromadj=gs->angleAccX-adj_s->angleAccX;
-Yfromadj=gs->angleAccY-adj_s->angleAccY;
-Xfromref=gs->angleAccX-adj_s->angleAccX-ref_s->angleAccX;
-Yfromref=gs->angleAccY-adj_s->angleAccY-ref_s->angleAccY;
-//float  angleAccX = atan2(newY,  newZ + abs(newX)) * 360 / 2.0 / PI;
-//float  angleAccY = atan2(newX,  newZ + abs(newY)) * 360 / -2.0 / PI;
-Serial.print("xangle:"); Serial.print(gs->angleAccX);
-Serial.print("  |  yangle: "); Serial.print(gs->angleAccY);
-Serial.println();
-Serial.print("xadjusted:"); Serial.print(Xfromadj);
-Serial.print("  |  yadjusted: "); Serial.print(Yfromadj);
-Serial.println();
-Serial.print("xfromref:"); Serial.print(Xfromref);
-Serial.print("  |  yfromref: "); Serial.print(Yfromref);
-Serial.println();
-Serial.println();
-  //print the data out:
- 
- // Serial.print("\taccX:");  Serial.print(float(gs->acc_X));
-//  Serial.print("\taccY:");  Serial.print(float(gs->acc_Y));
-//  Serial.print("\taccZ:");  Serial.print(float(gs->acc_Z));
- // Serial.println();
- // Serial.print("\ttemp:");  Serial.print(conv_val_to_str(tmp_buf,(gs->temperature)/340+36.53));
-  //Serial.println();
- // Serial.print("\tgX:");  Serial.print(conv_val_to_str(tmp_buf,gs-> gyro_X));
- // Serial.print("\tgY:");  Serial.print(conv_val_to_str(tmp_buf,gs->gyro_Y));
-  //Serial.print("\tgZ:");  Serial.print(conv_val_to_str(tmp_buf,gs->gyro_Z));
-//  Serial.println();
+  Xfromadj=gs->angleAccX-adj_s->angleAccX;
+  Yfromadj=gs->angleAccY-adj_s->angleAccY;
+  Xfromref=gs->angleAccX-adj_s->angleAccX-ref_s->angleAccX;
+  Yfromref=gs->angleAccY-adj_s->angleAccY-ref_s->angleAccY;
+  //float  angleAccX = atan2(newY,  newZ + abs(newX)) * 360 / 2.0 / PI;
+  //float  angleAccY = atan2(newX,  newZ + abs(newY)) * 360 / -2.0 / PI;
+  Serial.print("xangle:"); Serial.print(gs->angleAccX);
+  Serial.print("  |  yangle: "); Serial.print(gs->angleAccY);
+  Serial.println();
+  Serial.print("xadjusted:"); Serial.print(Xfromadj);
+  Serial.print("  |  yadjusted: "); Serial.print(Yfromadj);
+  Serial.println();
+  Serial.print("xfromref:"); Serial.print(Xfromref);
+  Serial.print("  |  yfromref: "); Serial.print(Yfromref);
+  Serial.println();
+  Serial.println();
 }
 
+//todo send data formatted for labview
 void gyro_serial_print()
 {
   //final function forr labview program, the data being sent should be formatted in a way suitable for labview
@@ -173,6 +150,7 @@ void gyro_serial_print()
   */
 }
 
+//check wheather sth was sent to arduino through serial port and interpret the order
 bool recieve_order(gyro_stru *gs,gyro_stru *ref_s,gyro_stru *adj_s)
 {
   int i=0;
@@ -190,54 +168,44 @@ bool recieve_order(gyro_stru *gs,gyro_stru *ref_s,gyro_stru *adj_s)
   switch (order)
   {
     case 1: //set reference angle
-    set_angle_reference(gs,ref_s);
-    Serial.println("refrence angle set");
+      set_angle_reference(gs,ref_s);
+      Serial.println("refrence angle set");
     return 0;
 
     case 2: //remove reference angle
-    ref_s->acc_X=0;
-    ref_s->acc_Y=0;
-    ref_s->acc_Z=0;
-    ref_s->gyro_X=0;
-    ref_s->gyro_Y=0;
-    ref_s->gyro_Z=0;
-    ref_s->angleAccX=0;
-    ref_s->angleAccY=0;
-    Serial.println("reference angle removed");
+      ref_s->acc_X=0;
+      ref_s->acc_Y=0;
+      ref_s->acc_Z=0;
+      ref_s->gyro_X=0;
+      ref_s->gyro_Y=0;
+      ref_s->gyro_Z=0;
+      ref_s->angleAccX=0;
+      ref_s->angleAccY=0;
+      Serial.println("reference angle removed");
     return 0;
 
     case 3: //zero-in at starting place set adjust values
-    set_angle_reference(gs,adj_s);
-    Serial.println("adjust angle set");
+      set_angle_reference(gs,adj_s);
+      Serial.println("adjust angle set");
     return 0;
 
     case 4: //remove zero-in values at starting place  values
-    adj_s->acc_X=0;
-    adj_s->acc_Y=0;
-    adj_s->acc_Z=0;
-    adj_s->gyro_X=0;
-    adj_s->gyro_Y=0;
-    adj_s->gyro_Z=0;
-    adj_s->angleAccX=0;
-    adj_s->angleAccY=0;
-    Serial.println("adjust angle removed");
+      adj_s->acc_X=0;
+      adj_s->acc_Y=0;
+      adj_s->acc_Z=0;
+      adj_s->gyro_X=0;
+      adj_s->gyro_Y=0;
+      adj_s->gyro_Z=0;
+      adj_s->angleAccX=0;
+      adj_s->angleAccY=0;
+      Serial.println("adjust angle removed");
     return 0;
 
     default: //some error occured
-    Serial.println("error while reading orders form master");
+      Serial.println("error while reading orders form master");
     return 1;
 
   }
 
 }
 
-/*
-+trzeba zrobic tak:
-w funkcji liczacej dane do wyslania:
-+finalc angle calculation readout-zero correction
-+relative angle correction readout-relative angle set value in structure - zero correction
-
------------------------------------------------
-when adjust values will be reset in the correspodnig structure  0 value will be substracted from the redings
-
-*/
