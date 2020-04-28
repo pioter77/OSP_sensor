@@ -25,6 +25,7 @@ void gyro_readout_fcn(gyro_stru *gs);
 void gyro_serialtestprint(gyro_stru *gs,gyro_stru *ref_s,gyro_stru *adj_s);
 void set_angle_reference(gyro_stru *gs,gyro_stru *ref);
 bool recieve_order(gyro_stru *gs,gyro_stru *ref_s,gyro_stru *adj_s);
+void gyro_serial_print(gyro_stru *gs,gyro_stru *ref_s,gyro_stru *adj_s);
 
 
 void setup() {
@@ -40,10 +41,11 @@ void loop() {
   recieve_order(&gyro_holder,&reference_holder,&adjust_holder);   //process the data got form com port immediatelly
   
   //testowo co 1 sekunde
-  if(ac_time-timer>1000)
+  if(ac_time-timer>100)
   {   //send and refresh the sensor values every 1 second for now
     gyro_readout_fcn(&gyro_holder);
-    gyro_serialtestprint(&gyro_holder,&reference_holder,&adjust_holder);
+   // gyro_serialtestprint(&gyro_holder,&reference_holder,&adjust_holder);
+    gyro_serial_print(&gyro_holder,&reference_holder,&adjust_holder);
     timer=millis();
   }
 }
@@ -137,9 +139,13 @@ void gyro_serialtestprint(gyro_stru *gs,gyro_stru *ref_s,gyro_stru *adj_s)
 }
 
 //todo send data formatted for labview
-void gyro_serial_print()
+void gyro_serial_print(gyro_stru *gs,gyro_stru *ref_s,gyro_stru *adj_s)
 {
   //final function forr labview program, the data being sent should be formatted in a way suitable for labview
+
+float Xfromref;
+Xfromref=gs->angleAccX-adj_s->angleAccX-ref_s->angleAccX;
+Serial.println(Xfromref);
 
   /*final forumla:
   +angle after zero coreection 
