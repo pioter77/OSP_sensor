@@ -143,9 +143,39 @@ void gyro_serial_print(gyro_stru *gs,gyro_stru *ref_s,gyro_stru *adj_s)
 {
   //final function forr labview program, the data being sent should be formatted in a way suitable for labview
 
-float Xfromref;
-Xfromref=gs->angleAccX-adj_s->angleAccX-ref_s->angleAccX;
-Serial.println(Xfromref);
+  float X_ang_pure,X_ang_mod,X_val_ref,X_val_zero;
+  float Y_ang_pure,Y_ang_mod,Y_val_ref,Y_val_zero;
+
+  X_ang_mod=gs->angleAccX-adj_s->angleAccX-ref_s->angleAccX;  //calculate angle X with all corrections
+  Y_ang_mod=gs->angleAccY-adj_s->angleAccY-ref_s->angleAccY;  //calculate angle X with all corrections
+
+  X_ang_pure=gs->angleAccX; //pure X acc angle sensor readout
+  Y_ang_pure=gs->angleAccY; //pure X acc angle sensor readout
+
+  X_val_ref=ref_s->angleAccX; //refrence angle value for X axis
+  Y_val_ref=ref_s->angleAccY; //refrence angle value for Y axis
+
+  X_val_zero=adj_s->angleAccX;  //zero - in values for X axis angle measurement
+  Y_val_zero=adj_s->angleAccY;  //zero - in values for Y axis angle measurement
+
+//Values for axis X:
+  Serial.print(X_ang_pure);
+  Serial.print(";");
+  Serial.print(X_ang_mod);
+  Serial.print(";");
+  Serial.print(X_val_ref);
+  Serial.print(";");
+  Serial.print(X_val_zero);
+  Serial.print(";");
+  //now values for axis Y:
+  Serial.print(Y_ang_pure);
+  Serial.print(";");
+  Serial.print(Y_ang_mod);
+  Serial.print(";");
+  Serial.print(Y_val_ref);
+  Serial.print(";");
+  Serial.print(Y_val_zero);
+  Serial.print("\n");
 
   /*final forumla:
   +angle after zero coreection 
@@ -175,10 +205,10 @@ bool recieve_order(gyro_stru *gs,gyro_stru *ref_s,gyro_stru *adj_s)
   {
     case 1: //set reference angle
       set_angle_reference(gs,ref_s);
-      Serial.println("refrence angle set");
+     // Serial.println("refrence angle set");
     return 0;
 
-    case 2: //remove reference angle
+    case 2: //remove reference angle set 0 to all values
       ref_s->acc_X=0;
       ref_s->acc_Y=0;
       ref_s->acc_Z=0;
@@ -187,12 +217,12 @@ bool recieve_order(gyro_stru *gs,gyro_stru *ref_s,gyro_stru *adj_s)
       ref_s->gyro_Z=0;
       ref_s->angleAccX=0;
       ref_s->angleAccY=0;
-      Serial.println("reference angle removed");
+    //  Serial.println("reference angle removed");
     return 0;
 
     case 3: //zero-in at starting place set adjust values
       set_angle_reference(gs,adj_s);
-      Serial.println("adjust angle set");
+    //  Serial.println("adjust angle set");
     return 0;
 
     case 4: //remove zero-in values at starting place  values
@@ -204,7 +234,7 @@ bool recieve_order(gyro_stru *gs,gyro_stru *ref_s,gyro_stru *adj_s)
       adj_s->gyro_Z=0;
       adj_s->angleAccX=0;
       adj_s->angleAccY=0;
-      Serial.println("adjust angle removed");
+     // Serial.println("adjust angle removed");
     return 0;
 
     default: //some error occured
